@@ -33,6 +33,7 @@ tmux setenv -g FLOATX_LEFT_SIZE   "$(tmux_opt_consume '@floatx-left-size'   'w=8
 tmux setenv -g FLOATX_SESSION     "$(tmux_opt_consume '@floatx-session-name' 'floatx')"
 tmux setenv -g FLOATX_TITLE       "$(tmux_opt_consume '@floatx-title'        'MyFloatx')"
 tmux setenv -g FLOATX_BORDER_COLOR "$(tmux_opt_consume '@floatx-border-color' 'colour214')"
+tmux setenv -g FLOATX_DEBUG       "$(tmux_opt_consume '@floatx-debug'        'off')"
 tmux setenv -g FLOATX_POSITION    "center"
 
 # Unbind previous keys before rebinding — prevents stale keys from lingering
@@ -56,7 +57,8 @@ tmux setenv -g FLOATX_BIND_RIGHT  "$_right"
 tmux setenv -g FLOATX_BIND_LEFT   "$_left"
 tmux setenv -g FLOATX_BIND_RESUME "$_resume"
 
-echo "=== floatx loaded $(date '+%Y-%m-%d %H:%M:%S') ===" > /tmp/floatx_debug.log
+[ "$(env_val FLOATX_DEBUG)" = "on" ] && \
+    echo "=== floatx loaded $(date '+%Y-%m-%d %H:%M:%S') ===" > /tmp/floatx_debug.log
 
 # Toggle key (requires prefix, e.g. <prefix>+p)
 tmux bind-key "$_toggle" run-shell "$CURRENT_DIR/scripts/toggle.sh"

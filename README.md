@@ -61,6 +61,7 @@ All options are set in `~/.tmux.conf` before the plugin is loaded.
 | `@floatx-bind-right` | `right` | Move-right key (becomes `Ctrl+key`) |
 | `@floatx-bind-left` | `left` | Move-left key (becomes `Ctrl+key`) |
 | `@floatx-bind-resume` | `up` | Resume-center key (becomes `Ctrl+key`) |
+| `@floatx-debug` | `off` | Enable debug logging to `/tmp/floatx_debug.log` (`on`/`off`) |
 
 ### Size format
 
@@ -96,7 +97,13 @@ run-shell "/path/to/tmux-floatx/floatx.tmux"
 
 ## Debug log
 
-All popup events are logged to `/tmp/floatx_debug.log`. Monitor in real time:
+Debug logging is off by default. Enable it in `~/.tmux.conf`:
+
+```tmux
+set -g @floatx-debug on
+```
+
+All popup events are then logged to `/tmp/floatx_debug.log`. Monitor in real time:
 
 ```bash
 tail -f /tmp/floatx_debug.log

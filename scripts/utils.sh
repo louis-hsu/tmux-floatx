@@ -4,6 +4,7 @@ DEFAULT_SESSION="floatx"
 LOG_FILE="/tmp/floatx_debug.log"
 
 floatx_log() {
+    [ "$(env_val FLOATX_DEBUG)" = "on" ] || return 0
     echo "$(date '+%H:%M:%S') $*" >> "$LOG_FILE"
 }
 
