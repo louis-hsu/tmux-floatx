@@ -62,3 +62,41 @@ tmux setenv -g FLOATX_BIND_RESUME "$_resume"
 
 # Toggle key (requires prefix, e.g. <prefix>+p)
 tmux bind-key "$_toggle" run-shell "$CURRENT_DIR/scripts/toggle.sh"
+
+# Launcher keys — unbind previous keys before rebinding to avoid stale bindings
+# on reload when launchers are added, removed, or changed.
+_prev_launch_count="$(env_val FLOATX_LAUNCH_COUNT)"
+_li=1
+while [ "$_li" -le "${_prev_launch_count:-0}" ]; do
+    _prev_lkey="$(env_val "FLOATX_LAUNCH_${_li}_KEY")"
+    [ -n "$_prev_lkey" ] && tmux unbind-key "$_prev_lkey" 2>/dev/null || true
+    _li=$((_li+1))
+done
+
+_launch_count=0
+_li=1
+while true; do
+    _lopt="$(tmux_opt_consume "@floatx-launch-$_li" '')"
+    [ -z "$_lopt" ] && break
+    _lkey="$(parse_kv "$_lopt" "key")"
+    _lcmd="$(parse_kv "$_lopt" "cmd")"
+    if [ -n "$_lkey" ] && [ -n "$_lcmd" ]; then
+        tmux setenv -g "FLOATX_LAUNCH_${_li}_KEY" "$_lkey"
+        tmux setenv -g "FLOATX_LAUNCH_${_li}_CMD" "$_lcmd"
+        tmux bind-key "$_lkey" run-shell "$CURRENT_DIR/scripts/launch.sh $_li"
+        _launch_count="$_li"
+    fi
+    _li=$((_li+1))
+done
+
+# Clear stale env vars for launchers removed since the last reload
+_li=$((_launch_count+1))
+while true; do
+    _old_lkey="$(env_val "FLOATX_LAUNCH_${_li}_KEY")"
+    [ -z "$_old_lkey" ] && break
+    tmux setenv -gu "FLOATX_LAUNCH_${_li}_KEY" 2>/dev/null || true
+    tmux setenv -gu "FLOATX_LAUNCH_${_li}_CMD" 2>/dev/null || true
+    _li=$((_li+1))
+done
+
+tmux setenv -g FLOATX_LAUNCH_COUNT "$_launch_count"

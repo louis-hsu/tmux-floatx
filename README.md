@@ -8,6 +8,7 @@ A tmux plugin that provides a floating terminal window with support for left, ri
 - Move the float to the left or right half of the terminal
 - Resume to center at any time
 - Position memory: the float stays where you left it between toggles
+- Launch CLI/TUI tools (e.g. lazygit, btop) in a float popup with a hotkey
 - Fully customizable size, session name, title, and border color
 - Move keys are only active while the float window is open (no accidental session detach)
 
@@ -62,6 +63,7 @@ All options are set in `~/.tmux.conf` before the plugin is loaded.
 | `@floatx-bind-left` | `left` | Move-left key (becomes `Ctrl+key`) |
 | `@floatx-bind-resume` | `up` | Resume-center key (becomes `Ctrl+key`) |
 | `@floatx-debug` | `off` | Enable debug logging to `/tmp/floatx_debug.log` (`on`/`off`) |
+| `@floatx-launch-N` | _(none)_ | Define a launcher (see [Launchers](#launchers)) |
 
 ### Size format
 
@@ -94,6 +96,29 @@ set -g @floatx-bind-resume    "up"
 
 run-shell "/path/to/tmux-floatx/floatx.tmux"
 ```
+
+## Launchers
+
+Launchers let you open CLI/TUI tools in an ephemeral float popup with a single prefix key. The popup uses floatx's size, border color, and title settings; it opens centered and closes automatically when the command exits.
+
+Define launchers in `~/.tmux.conf` using `@floatx-launch-N` (N = 1, 2, 3, …):
+
+```tmux
+set -g @floatx-launch-1 "key=g,cmd=lazygit"
+set -g @floatx-launch-2 "key=b,cmd=btop"
+```
+
+Each launcher binds `<prefix>+<key>` to open a popup running `cmd` in the current pane's working directory.
+
+### Launcher vs. float window
+
+| | Float window | Launcher popup |
+|---|---|---|
+| Triggered by | `<prefix>+p` | `<prefix>+<key>` |
+| Session | Persistent tmux session | Ephemeral (closes on exit) |
+| Working directory | Set at session creation | Pane's current path at keypress |
+| Position | center / left / right (moveable) | Always center |
+| Move keys | Active inside | Not applicable |
 
 ## Debug log
 

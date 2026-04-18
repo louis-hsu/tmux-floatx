@@ -42,7 +42,7 @@ env_val() {
 # Parse a key from a "k=v,k=v" string
 # Usage: parse_kv "w=80%,h=80%" "w"  →  "80%"
 parse_kv() {
-    echo "$1" | tr ',' '\n' | grep "^$2=" | cut -d'=' -f2
+    echo "$1" | tr ',' '\n' | grep "^$2=" | cut -d'=' -f2-
 }
 
 # Convert a percentage string (e.g. "50%" or "0") to an absolute column/row count
@@ -111,7 +111,7 @@ open_popup() {
             size="$(env_val FLOATX_SIZE)"
             w="$(parse_kv "$size" "w")"
             h="$(parse_kv "$size" "h")"
-            floatx_log "position=center | origin=$origin pane=$pane target=[$target_info] src_w=$(env_val FLOATX_WIN_W) src_h=$(env_val FLOATX_WIN_H) | cfg @floatx-size=$size | float w=$w h=$h x=C y=C"
+            floatx_log "[popup] position=center | origin=$origin pane=$pane target=[$target_info] src_w=$(env_val FLOATX_WIN_W) src_h=$(env_val FLOATX_WIN_H) | cfg @floatx-size=$size | float w=$w h=$h x=C y=C"
             # -t pane pins the popup to the exact client captured at toggle time.
             # -x C -y C delegates centering to tmux; w/h accept % strings directly.
             tmux popup -t "$pane" -x C -y C -w "$w" -h "$h" \
@@ -127,7 +127,7 @@ open_popup() {
             half_w=$(( win_w / 2 ))
             w_abs=$(pct_to_abs "$w" "$half_w")
             x_abs=$(( (half_w - w_abs) / 2 ))
-            floatx_log "position=left  | origin=$origin pane=$pane target=[$target_info] src_w=$win_w src_h=$(env_val FLOATX_WIN_H) | cfg @floatx-left-size=$size | float w=$w_abs h=$h x=$x_abs y=C"
+            floatx_log "[popup] position=left  | origin=$origin pane=$pane target=[$target_info] src_w=$win_w src_h=$(env_val FLOATX_WIN_H) | cfg @floatx-left-size=$size | float w=$w_abs h=$h x=$x_abs y=C"
             tmux popup -t "$pane" -x "$x_abs" -y C -w "$w_abs" -h "$h" \
                 -T "$title" -S "fg=$border_color" \
                 -b rounded -E "tmux attach-session -t '$session'"
@@ -141,10 +141,43 @@ open_popup() {
             half_w=$(( win_w / 2 ))
             w_abs=$(pct_to_abs "$w" "$half_w")
             x_abs=$(( half_w + (half_w - w_abs) / 2 ))
-            floatx_log "position=right | origin=$origin pane=$pane target=[$target_info] src_w=$win_w src_h=$(env_val FLOATX_WIN_H) | cfg @floatx-right-size=$size | float w=$w_abs h=$h x=$x_abs y=C"
+            floatx_log "[popup] position=right | origin=$origin pane=$pane target=[$target_info] src_w=$win_w src_h=$(env_val FLOATX_WIN_H) | cfg @floatx-right-size=$size | float w=$w_abs h=$h x=$x_abs y=C"
             tmux popup -t "$pane" -x "$x_abs" -y C -w "$w_abs" -h "$h" \
                 -T "$title" -S "fg=$border_color" \
                 -b rounded -E "tmux attach-session -t '$session'"
             ;;
     esac
+}
+
+# Open an ephemeral popup running cmd directly (no session attachment).
+# Always centered, working directory set to cwd, styled with floatx theme.
+# Usage: open_launcher_popup <cmd> <cwd> <pane> [post_cmd]
+open_launcher_popup() {
+    local cmd="$1"
+    local cwd="$2"
+    local pane="$3"
+    local post_cmd="$4"   # optional: run after cmd exits (used to reopen float)
+
+    local size w h base_title title border_color
+
+    size="$(env_val FLOATX_SIZE)"
+    w="$(parse_kv "$size" "w")"
+    h="$(parse_kv "$size" "h")"
+
+    base_title="$(env_val FLOATX_TITLE)"
+    [ -z "$base_title" ] && base_title="Floatx"
+    title="$base_title | $cmd"
+
+    border_color="$(env_val FLOATX_BORDER_COLOR)"
+    [ -z "$border_color" ] && border_color="magenta"
+
+    local full_cmd="$cmd"
+    [ -n "$post_cmd" ] && full_cmd="$cmd; '$post_cmd'"
+
+    floatx_log "[launcher] cmd=[$cmd] post_cmd=[$post_cmd] full_cmd=[$full_cmd] pane=$pane cwd=$cwd w=$w h=$h"
+
+    local popup_args=(-t "$pane" -x C -y C -w "$w" -h "$h" -T "$title" -S "fg=$border_color" -b rounded)
+    [ -n "$cwd" ] && popup_args+=(-d "$cwd")
+    popup_args+=(-E "$full_cmd")
+    tmux popup "${popup_args[@]}"
 }
