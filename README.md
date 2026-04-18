@@ -1,10 +1,10 @@
-# tmux-floatx
+# Floatx - Floating tmux pane utility
 
-A tmux plugin that provides a floating terminal window with support for left, right, and center positioning — all without leaving the keyboard.
+A tmux plugin that provides a floating pane with support for left/right/center positioning, and CLI launcher
 
 ## Features
 
-- Toggle a floating terminal with a single prefix key
+- Toggle a floating pane with a single prefix key
 - Move the float to the left or right half of the terminal
 - Resume to center at any time
 - Position memory: the float stays where you left it between toggles
@@ -24,7 +24,7 @@ Add to `~/.tmux.conf`:
 
 ```tmux
 set -g @plugin 'louis-hsu/tmux-floatx'
-run '~/.tmux/plugins/tpm/tpm'
+run -b '$XDG_CONFIG_HOME/tmux/plugins/tpm/tpm'
 ```
 
 ### Manual
@@ -37,7 +37,7 @@ run-shell "/path/to/tmux-floatx/floatx.tmux"
 
 ## Keybindings
 
-| Key | Action |
+| Key | Action (Default) |
 |---|---|
 | `prefix` + `p` | Toggle float window show/hide |
 | `Ctrl` + `Right` | Move float to right half |
@@ -94,12 +94,11 @@ set -g @floatx-bind-right     "right"
 set -g @floatx-bind-left      "left"
 set -g @floatx-bind-resume    "up"
 
-run-shell "/path/to/tmux-floatx/floatx.tmux"
 ```
 
 ## Launchers
 
-Launchers let you open CLI/TUI tools in an ephemeral float popup with a single prefix key. The popup uses floatx's size, border color, and title settings; it opens centered and closes automatically when the command exits.
+Launchers let you open CLI/TUI tools in an ephemeral float pane with a single prefix key. The popup utilizes floatx's size, border color, and title settings; it opens centered and closes automatically when the command exits.
 
 Define launchers in `~/.tmux.conf` using `@floatx-launch-N` (N = 1, 2, 3, …):
 
@@ -133,3 +132,6 @@ All popup events are then logged to `/tmp/floatx_debug.log`. Monitor in real tim
 ```bash
 tail -f /tmp/floatx_debug.log
 ```
+
+### Acknowledgments
+This project is inspired by [omerxx/tmux-floax](https://github.com/omerxx/tmux-floax), and is mainly developed by `claude code`
