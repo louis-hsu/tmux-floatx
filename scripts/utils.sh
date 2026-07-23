@@ -171,8 +171,11 @@ open_launcher_popup() {
     border_color="$(env_val FLOATX_BORDER_COLOR)"
     [ -z "$border_color" ] && border_color="magenta"
 
-    local full_cmd="$cmd"
-    [ -n "$post_cmd" ] && full_cmd="$cmd; '$post_cmd'"
+    # Run cmd via interactive shell so aliases/functions (e.g. from .zshrc) resolve
+    local shell="${SHELL:-/bin/bash}"
+    local full_cmd
+    full_cmd="$(printf '%q' "$shell") -ic $(printf '%q' "$cmd")"
+    [ -n "$post_cmd" ] && full_cmd="$full_cmd; '$post_cmd'"
 
     floatx_log "[launcher] cmd=[$cmd] post_cmd=[$post_cmd] full_cmd=[$full_cmd] pane=$pane cwd=$cwd w=$w h=$h"
 

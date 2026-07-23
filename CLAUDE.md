@@ -33,6 +33,7 @@ Shared library sourced by all scripts. Key functions:
 - `parse_kv` / `pct_to_abs` — parse `w=80%,h=80%` size strings and convert to absolute pixel counts
 - `set_move_bindings` / `unset_move_bindings` — bind/unbind Ctrl+arrow keys in the root key table (no prefix). These are only active while inside the float session.
 - `open_popup` — builds and fires the `tmux popup` command for the current `FLOATX_POSITION`
+- `open_launcher_popup` — fires a one-off `tmux popup -E` for `@floatx-launch-N` commands. Runs cmd via `$SHELL -ic` (not a plain `-c`) so shell aliases/functions from `.zshrc`/`.zsh_aliases` resolve; a plain `-c` invocation would 127 on anything defined only as a shell alias/function.
 
 ### `scripts/toggle.sh`
 
@@ -43,6 +44,12 @@ Called on `<prefix>+p`. Detects whether the active session is the float session:
 ### `scripts/position.sh`
 
 Called by move key bindings with `left`, `right`, or `center` as argument. Pressing the same direction twice toggles back to center. Re-reads terminal dimensions via `stty size` on the stored TTY path (bypasses tmux to get true OS-level dimensions), updates `FLOATX_POSITION`, detaches, then calls `open_popup`.
+
+### `scripts/launch.sh`
+
+Called by `@floatx-launch-N` key bindings. Reads `FLOATX_LAUNCH_<N>_CMD`, resolves target session/pane/cwd, and calls `open_launcher_popup`:
+- If invoked from inside the float session → dismiss float first (`unset_move_bindings` + `detach-client`), run cmd in a popup, then reopen the float via `float_reopen.sh` chained as `post_cmd`.
+- If invoked from outside the float session → just run cmd in a popup targeting the current pane.
 
 ### Size geometry
 
