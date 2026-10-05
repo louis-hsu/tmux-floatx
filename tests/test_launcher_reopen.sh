@@ -33,7 +33,20 @@ assert_not_log() {
     fi
 }
 
-clear_log() { > "$LOG_FILE"; }
+# Fixed-string variant — for log lines containing regex metachars (e.g. the
+# backslash escapes printf %q adds to full_cmd)
+assert_log_fixed() {
+    local desc="$1" text="$2"
+    if grep -qF -- "$text" "$LOG_FILE" 2>/dev/null; then
+        pass "$desc"
+    else
+        fail "$desc  [text not found: $text]"
+        echo "        --- log tail ---"
+        tail -8 "$LOG_FILE" 2>/dev/null | sed 's/^/        /'
+    fi
+}
+
+clear_log() { : > "$LOG_FILE"; }
 
 # ── prerequisite ─────────────────────────────────────────────────────────────
 
@@ -70,6 +83,7 @@ tmux setenv -g FLOATX_LAUNCH_1_CMD "echo launcher_test"
 echo "T1: open_launcher_popup — full_cmd includes post_cmd when provided"
 clear_log
 (
+    SHELL=/bin/bash   # pin shell so full_cmd is deterministic
     source "$SCRIPTS/utils.sh"
     # Allow showenv through to real tmux (needed for floatx_log and env_val).
     # Mock only tmux popup to prevent opening a real popup.
@@ -84,14 +98,15 @@ clear_log
     open_launcher_popup "echo test" "/tmp" "$CURRENT_PANE" "/path/to/float_reopen.sh"
 )
 assert_log "full_cmd logged"          "\[launcher\] cmd=\[echo test\]"
-assert_log "post_cmd in full_cmd"     "full_cmd=\[echo test; '/path/to/float_reopen.sh'\]"
+assert_log_fixed "post_cmd in full_cmd" "full_cmd=[/bin/bash -ic echo\\ test; '/path/to/float_reopen.sh']"
 assert_log "tmux popup mocked"        "\[test\] mock: tmux popup called"
 echo ""
 
 # ── T2: open_launcher_popup without post_cmd ─────────────────────────────────
-echo "T2: open_launcher_popup — full_cmd equals cmd when no post_cmd"
+echo "T2: open_launcher_popup — full_cmd is shell-wrapped cmd when no post_cmd"
 clear_log
 (
+    SHELL=/bin/bash
     source "$SCRIPTS/utils.sh"
     tmux() {
         case "$1" in
@@ -104,7 +119,7 @@ clear_log
     open_launcher_popup "echo test" "/tmp" "$CURRENT_PANE"
 )
 assert_log "cmd logged"               "\[launcher\] cmd=\[echo test\]"
-assert_log "full_cmd equals cmd"      "post_cmd=\[\] full_cmd=\[echo test\]"
+assert_log_fixed "full_cmd is shell-wrapped cmd" "post_cmd=[] full_cmd=[/bin/bash -ic echo\\ test]"
 echo ""
 
 # ── T3: launch.sh outside-float branch ───────────────────────────────────────
