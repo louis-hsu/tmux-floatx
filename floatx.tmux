@@ -11,7 +11,7 @@ source "$CURRENT_DIR/scripts/utils.sh"
 # NOTE: for config changes to take effect, this script must be re-run after
 # sourcing tmux.conf. Add this line at the END of tmux.conf (after all
 # @floatx-* options) for a single-reload workflow:
-#   run-shell "bash /path/to/tmux-floatx/plugin.tmux"
+#   run-shell "bash /path/to/tmux-floatx/floatx.tmux"
 # Convert a bare key name to a Ctrl+Key tmux binding name.
 # Arrow keys must be capitalized in tmux: "right" → "C-Right", "up" → "C-Up".
 # Regular letter keys stay lowercase:      "h"     → "C-h".
