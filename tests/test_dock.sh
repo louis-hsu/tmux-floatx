@@ -72,14 +72,12 @@ if ! tmux info &>/dev/null; then
     exit 1
 fi
 
-# Snapshot live FLOATX_* env and float root bindings — tests overwrite them,
-# and the user's real float config must survive the run.
-ENV_SNAPSHOT="$(mktemp)"; KEYS_SNAPSHOT="$(mktemp)"
-tmux showenv -g | grep '^FLOATX_' > "$ENV_SNAPSHOT"
-tmux list-keys -T root | grep -E ' C-(Right|Left|Up|Down) ' > "$KEYS_SNAPSHOT"
+source "$REPO/tests/helpers.sh"
+snapshot_floatx_state   # restored on exit, even if interrupted
 
 export FLOAT_SESSION="floatx_dtest_float_$$"
 ORIGIN_SESSION="floatx_dtest_origin_$$"
+register_test_session "$FLOAT_SESSION" "$ORIGIN_SESSION" "${ORIGIN_SESSION}_renamed"
 
 echo "=== tmux-floatx dock tests ==="
 echo ""
@@ -191,14 +189,6 @@ echo ""
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 tmux kill-session -t "$FLOAT_SESSION"  2>/dev/null
 tmux kill-session -t "$ORIGIN_SESSION" 2>/dev/null
-tmux showenv -g | grep '^FLOATX_' | cut -d= -f1 | while read -r v; do
-    tmux setenv -gu "$v"
-done
-while IFS='=' read -r k v; do
-    tmux setenv -g "$k" "$v"
-done < "$ENV_SNAPSHOT"
-[ -s "$KEYS_SNAPSHOT" ] && tmux source-file "$KEYS_SNAPSHOT"
-rm -f "$ENV_SNAPSHOT" "$KEYS_SNAPSHOT"
 
 echo "─────────────────────────────────────────"
 echo "Results: $PASS passed, $FAIL failed"

@@ -12,7 +12,8 @@ tmux plugin (pure bash, no build): floating popup pane with center/left/right do
 - `scripts/launch.sh <N>` — launcher key handler. From inside float: detach, run cmd, then chain `float_reopen.sh` to restore float.
 - `scripts/float_reopen.sh` — two-phase reopen: phase 1 runs inside launcher popup and schedules phase 2 (`--open`) via `run-shell -b` (avoids nested-popup restriction).
 - `tests/test_launcher_reopen.sh` — log-based tests for launcher/reopen flow.
-- `tests/test_dock.sh` — dock tests against real throwaway sessions; snapshots/restores live `FLOATX_*` env and root bindings.
+- `tests/test_dock.sh` — dock tests against real throwaway sessions.
+- `tests/helpers.sh` — `snapshot_floatx_state` / `register_test_session`; EXIT trap restores live `FLOATX_*` env + floatx root bindings and kills test sessions.
 
 ## State model
 
@@ -44,6 +45,8 @@ bash tests/test_launcher_reopen.sh   # needs running tmux server; T6 opens a rea
 bash tests/test_dock.sh              # needs running tmux server; no popup
 shellcheck floatx.tmux scripts/*.sh
 ```
+
+Tests run on the user's live tmux server: every test file must `source tests/helpers.sh` and call `snapshot_floatx_state` before touching `FLOATX_*` env or bindings, and `register_test_session` for any session it creates. Never `setenv -gu` live vars in cleanup.
 
 Tests mock `tmux` with an exported bash function, passing `showenv` through to real tmux. Log-pattern assertions must track `launcher_full_cmd`'s format (debug variant, since tests run with debug on); T1/T2 pin `SHELL=/bin/bash` and use `assert_log_fixed` (grep -F) since `printf %q` adds backslashes.
 

@@ -55,8 +55,12 @@ if ! tmux info &>/dev/null; then
     exit 1
 fi
 
+source "$REPO/tests/helpers.sh"
+snapshot_floatx_state   # restored on exit, even if interrupted
+
 CURRENT_PANE="$(tmux display-message -p '#{pane_id}')"
 export TEST_SESSION="floatx_test_$$"   # exported so child bash processes inherit it
+register_test_session "$TEST_SESSION"
 
 echo "=== tmux-floatx launcher reopen tests ==="
 echo "    scripts dir : $SCRIPTS"
@@ -237,11 +241,6 @@ echo ""
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 tmux kill-session -t "$TEST_SESSION" 2>/dev/null
-tmux setenv -gu FLOATX_DEBUG        2>/dev/null
-tmux setenv -gu FLOATX_SESSION      2>/dev/null
-tmux setenv -gu FLOATX_PANE         2>/dev/null
-tmux setenv -gu FLOATX_POSITION     2>/dev/null
-tmux setenv -gu FLOATX_LAUNCH_1_CMD 2>/dev/null
 
 echo "─────────────────────────────────────────"
 echo "Results: $PASS passed, $FAIL failed"
