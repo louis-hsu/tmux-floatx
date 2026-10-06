@@ -7,6 +7,7 @@ A tmux plugin that provides a floating pane with support for left/right/center p
 - Toggle a floating pane with a single prefix key
 - Move the float to the left or right half of the terminal
 - Resume to center at any time
+- Dock the float pane into a new window of the current session
 - Position memory: the float stays where you left it between toggles
 - Launch CLI/TUI tools (e.g. lazygit, btop) in a float popup with a hotkey
 - Fully customizable size, session name, title, and border color
@@ -43,8 +44,11 @@ run-shell "/path/to/tmux-floatx/floatx.tmux"
 | `Ctrl` + `Right` | Move float to right half |
 | `Ctrl` + `Left` | Move float to left half |
 | `Ctrl` + `Up` | Resume float to center |
+| `Ctrl` + `Down` | Dock: move the float's active pane into a new window of the session the float was opened from |
 
-Move keys (`Ctrl+*`) are only active while the float window is open.
+Move/dock keys (`Ctrl+*`) are only active while the float window is open, and only inside the float — pressed in any other pane, the key passes through to the program unchanged.
+
+> **macOS:** `Ctrl+Down` (App Exposé) and `Ctrl+Left/Right` (switch Spaces) are system shortcuts by default. Disable them in System Settings → Keyboard → Keyboard Shortcuts → Mission Control, or rebind via `@floatx-bind-*`.
 
 ## Configuration
 
@@ -62,6 +66,7 @@ All options are set in `~/.tmux.conf` before the plugin is loaded.
 | `@floatx-bind-right` | `right` | Move-right key (becomes `Ctrl+key`) |
 | `@floatx-bind-left` | `left` | Move-left key (becomes `Ctrl+key`) |
 | `@floatx-bind-resume` | `up` | Resume-center key (becomes `Ctrl+key`) |
+| `@floatx-bind-dock` | `down` | Dock key (becomes `Ctrl+key`) |
 | `@floatx-debug` | `off` | Enable debug logging to `/tmp/floatx_debug.log` (`on`/`off`) |
 | `@floatx-launch-N` | _(none)_ | Define a launcher (see [Launchers](#launchers)) |
 
@@ -93,6 +98,7 @@ set -g @floatx-bind-toggle    "f"
 set -g @floatx-bind-right     "right"
 set -g @floatx-bind-left      "left"
 set -g @floatx-bind-resume    "up"
+set -g @floatx-bind-dock      "down"
 
 ```
 

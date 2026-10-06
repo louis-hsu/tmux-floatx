@@ -74,27 +74,37 @@ pct_to_abs() {
     echo $(( $2 * num / 100 ))
 }
 
-# Bind move keys as root-table (no prefix) — only called when inside float session
-set_move_bindings() {
-    local script_dir bind_right bind_left bind_resume
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    bind_right="$(env_val FLOATX_BIND_RIGHT)"
-    bind_left="$(env_val FLOATX_BIND_LEFT)"
-    bind_resume="$(env_val FLOATX_BIND_RESUME)"
-    tmux bind -n "$bind_right"  run-shell "$script_dir/position.sh right"
-    tmux bind -n "$bind_left"   run-shell "$script_dir/position.sh left"
-    tmux bind -n "$bind_resume" run-shell "$script_dir/position.sh center"
+# Bind one root-table key that acts only inside the float session.
+# Root-table bindings are server-wide, so outside the float the key is passed
+# through to the pane unchanged — otherwise it would be swallowed in every
+# other pane/client (e.g. after the float is closed via `exit`, which leaves
+# bindings behind).
+bind_float_key() {
+    local key="$1" cmd="$2" session
+    [ -z "$key" ] && return 0
+    session="$(env_val FLOATX_SESSION)"
+    [ -z "$session" ] && session="$DEFAULT_SESSION"
+    tmux bind -n "$key" if-shell -F "#{==:#{session_name},$session}" \
+        "run-shell '$cmd'" "send-keys $key"
 }
 
-# Remove move key bindings — called when leaving float session
+# Bind move/dock keys as root-table (no prefix) — only called when opening the float
+set_move_bindings() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    bind_float_key "$(env_val FLOATX_BIND_RIGHT)"  "$script_dir/position.sh right"
+    bind_float_key "$(env_val FLOATX_BIND_LEFT)"   "$script_dir/position.sh left"
+    bind_float_key "$(env_val FLOATX_BIND_RESUME)" "$script_dir/position.sh center"
+    bind_float_key "$(env_val FLOATX_BIND_DOCK)"   "$script_dir/dock.sh"
+}
+
+# Remove move/dock key bindings — called when leaving float session
 unset_move_bindings() {
-    local bind_right bind_left bind_resume
-    bind_right="$(env_val FLOATX_BIND_RIGHT)"
-    bind_left="$(env_val FLOATX_BIND_LEFT)"
-    bind_resume="$(env_val FLOATX_BIND_RESUME)"
-    tmux unbind -n "$bind_right"  2>/dev/null || true
-    tmux unbind -n "$bind_left"   2>/dev/null || true
-    tmux unbind -n "$bind_resume" 2>/dev/null || true
+    local key
+    for key in "$(env_val FLOATX_BIND_RIGHT)" "$(env_val FLOATX_BIND_LEFT)" \
+               "$(env_val FLOATX_BIND_RESUME)" "$(env_val FLOATX_BIND_DOCK)"; do
+        [ -n "$key" ] && tmux unbind -n "$key" 2>/dev/null || true
+    done
 }
 
 # Open the float popup at the current FLOATX_POSITION (center|left|right).
@@ -106,13 +116,14 @@ open_popup() {
     session="$(env_val FLOATX_SESSION)"
     [ -z "$session" ] && session="$DEFAULT_SESSION"
 
-    local base_title bind_right bind_left bind_resume
+    local base_title bind_right bind_left bind_resume bind_dock
     base_title="$(env_val FLOATX_TITLE)"
     [ -z "$base_title" ] && base_title="Floatx"
     bind_right="$(env_val FLOATX_BIND_RIGHT)"
     bind_left="$(env_val FLOATX_BIND_LEFT)"
     bind_resume="$(env_val FLOATX_BIND_RESUME)"
-    title="$base_title | [$bind_right] move right | [$bind_left] move left | [$bind_resume] resume"
+    bind_dock="$(env_val FLOATX_BIND_DOCK)"
+    title="$base_title | [$bind_right] move right | [$bind_left] move left | [$bind_resume] resume | [$bind_dock] dock"
 
     border_color="$(env_val FLOATX_BORDER_COLOR)"
     [ -z "$border_color" ] && border_color="magenta"

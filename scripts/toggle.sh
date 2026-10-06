@@ -13,6 +13,7 @@ if [ "$(tmux display-message -p '#{session_name}')" = "$session" ]; then
 else
     # Outside the float session — capture dimensions now, before any detach
     tmux setenv -g FLOATX_ORIGIN     "$(tmux display-message -p '#{session_name}')"
+    tmux setenv -g FLOATX_ORIGIN_ID  "$(tmux display-message -p '#{session_id}')"
     tmux setenv -g FLOATX_PANE       "$(tmux display-message -p '#{pane_id}')"
     tmux setenv -g FLOATX_CLIENT     "$(tmux display-message -p '#{client_name}')"
     tmux setenv -g FLOATX_CLIENT_TTY "$(tmux display-message -p '#{client_tty}')"

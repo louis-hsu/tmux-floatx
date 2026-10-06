@@ -8,13 +8,15 @@ tmux plugin (pure bash, no build): floating popup pane with center/left/right do
 - `scripts/utils.sh` — shared helpers, sourced by every script: `env_val`, `tmux_opt_consume`, `parse_kv`, `set/unset_move_bindings`, `open_popup`, `open_launcher_popup`, `floatx_log`.
 - `scripts/toggle.sh` — prefix+toggle key. Inside float session → detach; outside → capture origin pane/client/size, create session if missing, open popup.
 - `scripts/position.sh <left|right|center>` — Ctrl+arrow handler; same direction twice → center. Re-reads terminal size via `stty size < $FLOATX_CLIENT_TTY`, detaches, reopens.
+- `scripts/dock.sh` — dock key handler. `break-pane` moves float's active pane into new window of origin session (`FLOATX_ORIGIN_ID`), detaches popup, selects new window. Last float pane → float session dies (toggle recreates).
 - `scripts/launch.sh <N>` — launcher key handler. From inside float: detach, run cmd, then chain `float_reopen.sh` to restore float.
 - `scripts/float_reopen.sh` — two-phase reopen: phase 1 runs inside launcher popup and schedules phase 2 (`--open`) via `run-shell -b` (avoids nested-popup restriction).
 - `tests/test_launcher_reopen.sh` — log-based tests for launcher/reopen flow.
+- `tests/test_dock.sh` — dock tests against real throwaway sessions; snapshots/restores live `FLOATX_*` env and root bindings.
 
 ## State model
 
-All runtime state lives in **tmux global environment** (`tmux setenv -g FLOATX_*`), not files or shell vars — each keypress is a fresh `run-shell` process. Key vars: `FLOATX_POSITION`, `FLOATX_PANE`, `FLOATX_CLIENT_TTY`, `FLOATX_WIN_W/H`, `FLOATX_BIND_*`, `FLOATX_LAUNCH_<N>_KEY/CMD`, `FLOATX_LAUNCH_COUNT`.
+All runtime state lives in **tmux global environment** (`tmux setenv -g FLOATX_*`), not files or shell vars — each keypress is a fresh `run-shell` process. Key vars: `FLOATX_POSITION`, `FLOATX_PANE`, `FLOATX_ORIGIN_ID` (session id, rename-safe), `FLOATX_CLIENT_TTY`, `FLOATX_WIN_W/H`, `FLOATX_BIND_*`, `FLOATX_LAUNCH_<N>_KEY/CMD`, `FLOATX_LAUNCH_COUNT`.
 
 Read with `env_val`, never parse `showenv` directly.
 
@@ -22,7 +24,8 @@ Read with `env_val`, never parse `showenv` directly.
 
 - Options read via `tmux_opt_consume` (read then **unset**) so options removed from tmux.conf don't survive reload. Plugin must re-run after each `source-file`.
 - On reload, previous bindings (toggle, move keys, launcher keys) are unbound using stored `FLOATX_BIND_*` / `FLOATX_LAUNCH_*` before rebinding. Keep this when adding new keys.
-- Move keys are root-table (`bind -n`) and only bound while float open. Every path that leaves the float must call `unset_move_bindings` before `detach-client`.
+- Move/dock keys are root-table (`bind -n`) and only bound while float open. Every path that leaves the float must call `unset_move_bindings` before `detach-client`.
+- Root bindings are server-wide: bind via `bind_float_key` (`if-shell -F` on session name, else `send-keys` passthrough) so keys aren't swallowed in other panes/clients or after the float exits via `exit` (stale bindings). Script guards must not call `unset_move_bindings` — another client may still have float open.
 - Capture client dims/pane **before** `detach-client`; after detach, `display-message` resolves the wrong client. Popups target `-t "$FLOATX_PANE"` for the same reason.
 - Left/right width % is relative to **half** terminal width; computed to absolute cols in `open_popup`. Center uses tmux `-x C -y C` with % directly.
 - Launcher cmd runs via `$SHELL -ic` so user aliases/functions resolve.
@@ -38,6 +41,7 @@ Debug mode also changes launcher behavior: `launch.sh` logs a `[snapshot]`, `ope
 
 ```bash
 bash tests/test_launcher_reopen.sh   # needs running tmux server; T6 opens a real popup briefly
+bash tests/test_dock.sh              # needs running tmux server; no popup
 shellcheck floatx.tmux scripts/*.sh
 ```
 

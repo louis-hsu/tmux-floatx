@@ -6,10 +6,10 @@ source "$CURRENT_DIR/utils.sh"
 session="$(env_val FLOATX_SESSION)"
 [ -z "$session" ] && session="$DEFAULT_SESSION"
 
-# Guard: only run if we're actually inside the float session.
-# If the move keys fire outside it (stale bindings), clean up and exit.
+# Guard: only run if we're actually inside the float session. The key binding
+# already filters on session (see bind_float_key); don't unbind here — bindings
+# are server-wide and another client may still have the float open.
 if [ "$(tmux display-message -p '#{session_name}')" != "$session" ]; then
-    unset_move_bindings
     exit 0
 fi
 

@@ -42,20 +42,24 @@ _prev_toggle="$(env_val FLOATX_BIND_TOGGLE)"
 _prev_right="$(env_val FLOATX_BIND_RIGHT)"
 _prev_left="$(env_val FLOATX_BIND_LEFT)"
 _prev_resume="$(env_val FLOATX_BIND_RESUME)"
+_prev_dock="$(env_val FLOATX_BIND_DOCK)"
 [ -n "$_prev_toggle" ] && tmux unbind-key        "$_prev_toggle" 2>/dev/null || true
 [ -n "$_prev_right"  ] && tmux unbind-key -n     "$_prev_right"  2>/dev/null || true
 [ -n "$_prev_left"   ] && tmux unbind-key -n     "$_prev_left"   2>/dev/null || true
 [ -n "$_prev_resume" ] && tmux unbind-key -n     "$_prev_resume" 2>/dev/null || true
+[ -n "$_prev_dock"   ] && tmux unbind-key -n     "$_prev_dock"   2>/dev/null || true
 
 _toggle="$(tmux_opt_consume '@floatx-bind-toggle' 'p')"
 _right="$(make_ctrl_key "$(tmux_opt_consume '@floatx-bind-right'  'right')")"
 _left="$(make_ctrl_key  "$(tmux_opt_consume '@floatx-bind-left'   'left')")"
 _resume="$(make_ctrl_key "$(tmux_opt_consume '@floatx-bind-resume' 'up')")"
+_dock="$(make_ctrl_key   "$(tmux_opt_consume '@floatx-bind-dock'   'down')")"
 
 tmux setenv -g FLOATX_BIND_TOGGLE "$_toggle"
 tmux setenv -g FLOATX_BIND_RIGHT  "$_right"
 tmux setenv -g FLOATX_BIND_LEFT   "$_left"
 tmux setenv -g FLOATX_BIND_RESUME "$_resume"
+tmux setenv -g FLOATX_BIND_DOCK   "$_dock"
 
 [ "$(env_val FLOATX_DEBUG)" = "on" ] && \
     echo "=== floatx loaded $(date '+%Y-%m-%d %H:%M:%S') ===" > /tmp/floatx_debug.log
