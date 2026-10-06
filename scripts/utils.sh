@@ -3,9 +3,32 @@
 DEFAULT_SESSION="floatx"
 LOG_FILE="/tmp/floatx_debug.log"
 
+floatx_debug_on() {
+    [ "$(env_val FLOATX_DEBUG)" = "on" ]
+}
+
 floatx_log() {
-    [ "$(env_val FLOATX_DEBUG)" = "on" ] || return 0
+    floatx_debug_on || return 0
     echo "$(date '+%H:%M:%S') $*" >> "$LOG_FILE"
+}
+
+# Debug-only: dump launcher context to the log so a failing launch can be
+# diagnosed after the fact. Usage: floatx_launch_snapshot <cmd> <cwd> <pane>
+floatx_launch_snapshot() {
+    floatx_debug_on || return 0
+    local cmd="$1" cwd="$2" pane="$3" pane_ok shell="${SHELL:-/bin/bash}"
+    pane_ok="$(tmux display-message -t "$pane" -p '#{pane_id}' 2>&1)"
+    {
+        echo "$(date '+%H:%M:%S') [snapshot] tmux=$(tmux -V 2>&1) shell=$shell"
+        echo "  pane=$pane lookup=[$pane_ok]"
+        echo "  cwd=$cwd exists=$([ -d "$cwd" ] && echo yes || echo no)"
+        echo "  clients:"
+        tmux list-clients -F '    #{client_name} tty=#{client_tty} #{client_width}x#{client_height} session=#{client_session} flags=#{client_flags}' 2>&1
+        echo "  launcher env:"
+        tmux showenv -g 2>/dev/null | grep '^FLOATX_LAUNCH' | sed 's/^/    /'
+        echo "  resolve via $shell -ic:"
+        "$shell" -ic "command -v ${cmd%% *}; echo PATH=\$PATH" </dev/null 2>&1 | sed 's/^/    /'
+    } >> "$LOG_FILE"
 }
 
 # Strip surrounding single or double quotes from a string
@@ -171,16 +194,40 @@ open_launcher_popup() {
     border_color="$(env_val FLOATX_BORDER_COLOR)"
     [ -z "$border_color" ] && border_color="magenta"
 
-    # Run cmd via interactive shell so aliases/functions (e.g. from .zshrc) resolve
-    local shell="${SHELL:-/bin/bash}"
     local full_cmd
-    full_cmd="$(printf '%q' "$shell") -ic $(printf '%q' "$cmd")"
-    [ -n "$post_cmd" ] && full_cmd="$full_cmd; '$post_cmd'"
+    full_cmd="$(launcher_full_cmd "$cmd" "$post_cmd")"
 
     floatx_log "[launcher] cmd=[$cmd] post_cmd=[$post_cmd] full_cmd=[$full_cmd] pane=$pane cwd=$cwd w=$w h=$h"
 
     local popup_args=(-t "$pane" -x C -y C -w "$w" -h "$h" -T "$title" -S "fg=$border_color" -b rounded)
     [ -n "$cwd" ] && popup_args+=(-d "$cwd")
     popup_args+=(-E "$full_cmd")
-    tmux popup "${popup_args[@]}"
+
+    floatx_debug_on || { tmux popup "${popup_args[@]}"; return; }
+
+    local rc
+    tmux popup "${popup_args[@]}" 2>>"$LOG_FILE"
+    rc=$?
+    floatx_log "[launcher] popup rc=$rc"
+    return "$rc"
+}
+
+# Build the shell command run inside the launcher popup.
+# Usage: launcher_full_cmd <cmd> [post_cmd]
+# In debug mode, cmd's stderr and exit code go to the log, and the popup is
+# held open on failure so an instantly-exiting cmd is visible.
+launcher_full_cmd() {
+    local cmd="$1" post_cmd="$2"
+    # Run cmd via interactive shell so aliases/functions (e.g. from .zshrc) resolve
+    local shell="${SHELL:-/bin/bash}"
+    local full_cmd log_q
+    full_cmd="$(printf '%q' "$shell") -ic $(printf '%q' "$cmd")"
+    if floatx_debug_on; then
+        log_q="$(printf '%q' "$LOG_FILE")"
+        full_cmd="$full_cmd 2>>$log_q; rc=\$?"
+        full_cmd="$full_cmd; echo \"\$(date '+%H:%M:%S') [launcher/exit] rc=\$rc\" >>$log_q"
+        full_cmd="$full_cmd; if [ \$rc -ne 0 ]; then echo \"floatx: exited \$rc, see $LOG_FILE (press enter)\"; read -r _; fi"
+    fi
+    [ -n "$post_cmd" ] && full_cmd="$full_cmd; '$post_cmd'"
+    echo "$full_cmd"
 }

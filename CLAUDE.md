@@ -32,6 +32,8 @@ Read with `env_val`, never parse `showenv` directly.
 
 `set -g @floatx-debug on` → logs to `/tmp/floatx_debug.log` via `floatx_log` (tags like `[popup]`, `[launch]`, `[reopen/p1]`). Add `floatx_log` calls for new flows; tests assert on these log lines.
 
+Debug mode also changes launcher behavior: `launch.sh` logs a `[snapshot]`, `open_launcher_popup` logs popup rc/stderr, and `launcher_full_cmd` appends stderr/rc capture (`[launcher/exit]`) to the popup cmd. Runtime toggle without reload: `tmux setenv -g FLOATX_DEBUG on`.
+
 ## Testing
 
 ```bash
@@ -39,7 +41,7 @@ bash tests/test_launcher_reopen.sh   # needs running tmux server; T6 opens a rea
 shellcheck floatx.tmux scripts/*.sh
 ```
 
-Tests mock `tmux` with an exported bash function, passing `showenv` through to real tmux. Log-pattern assertions must track `open_launcher_popup`'s `full_cmd` format; T1/T2 pin `SHELL=/bin/bash` and use `assert_log_fixed` (grep -F) since `printf %q` adds backslashes.
+Tests mock `tmux` with an exported bash function, passing `showenv` through to real tmux. Log-pattern assertions must track `launcher_full_cmd`'s format (debug variant, since tests run with debug on); T1/T2 pin `SHELL=/bin/bash` and use `assert_log_fixed` (grep -F) since `printf %q` adds backslashes.
 
 Manual check: `tmux source-file ~/.config/tmux/tmux.conf`, then exercise prefix+p, Ctrl+arrows, launcher keys.
 

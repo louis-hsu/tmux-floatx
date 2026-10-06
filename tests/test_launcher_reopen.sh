@@ -98,7 +98,8 @@ clear_log
     open_launcher_popup "echo test" "/tmp" "$CURRENT_PANE" "/path/to/float_reopen.sh"
 )
 assert_log "full_cmd logged"          "\[launcher\] cmd=\[echo test\]"
-assert_log_fixed "post_cmd in full_cmd" "full_cmd=[/bin/bash -ic echo\\ test; '/path/to/float_reopen.sh']"
+assert_log_fixed "shell-wrapped cmd in full_cmd" "full_cmd=[/bin/bash -ic echo\\ test 2>>$LOG_FILE; rc=\$?"
+assert_log_fixed "post_cmd ends full_cmd" "; '/path/to/float_reopen.sh'] pane="
 assert_log "tmux popup mocked"        "\[test\] mock: tmux popup called"
 echo ""
 
@@ -119,7 +120,8 @@ clear_log
     open_launcher_popup "echo test" "/tmp" "$CURRENT_PANE"
 )
 assert_log "cmd logged"               "\[launcher\] cmd=\[echo test\]"
-assert_log_fixed "full_cmd is shell-wrapped cmd" "post_cmd=[] full_cmd=[/bin/bash -ic echo\\ test]"
+assert_log_fixed "full_cmd is shell-wrapped cmd" "post_cmd=[] full_cmd=[/bin/bash -ic echo\\ test 2>>$LOG_FILE; rc=\$?"
+assert_log_fixed "no post_cmd appended" "read -r _; fi] pane="
 echo ""
 
 # ── T3: launch.sh outside-float branch ───────────────────────────────────────
@@ -183,6 +185,54 @@ timeout 3 bash "$SCRIPTS/float_reopen.sh" --open 2>/dev/null
 sleep 0.2
 assert_log "phase2 logged"         "\[reopen/p2\] pane=$CURRENT_PANE"
 assert_log "popup opened via p2"   "\[popup\] position=center"
+echo ""
+
+# ── T7: launch.sh empty cmd ──────────────────────────────────────────────────
+echo "T7: launch.sh — empty launcher cmd logs FAIL and exits 1"
+clear_log
+tmux setenv -gu FLOATX_LAUNCH_1_CMD
+bash "$SCRIPTS/launch.sh" 1
+rc=$?
+tmux setenv -g FLOATX_LAUNCH_1_CMD "echo launcher_test"
+[ "$rc" -eq 1 ] && pass "exit status 1" || fail "exit status 1  [got $rc]"
+assert_log "cmd empty logged" "\[launch\] FAIL cmd empty | index=1"
+echo ""
+
+# ── T8: launch.sh popup failure ──────────────────────────────────────────────
+echo "T8: launch.sh — failing tmux popup logs rc and stderr"
+clear_log
+(
+    source "$SCRIPTS/utils.sh"
+    tmux() {
+        case "$*" in
+            "display-message -p #{session_name}")    echo "main" ;;
+            "display-message -p #{pane_current_path}") echo "/tmp" ;;
+            "display-message -p #{pane_id}")         echo "$CURRENT_PANE" ;;
+            showenv*)  command tmux "$@" ;;
+            popup*)    echo "mock popup error" >&2; return 1 ;;
+            *)         : ;;
+        esac
+    }
+    export -f tmux
+    SHELL=/bin/bash bash "$SCRIPTS/launch.sh" 1
+)
+rc=$?
+[ "$rc" -eq 1 ] && pass "exit status 1" || fail "exit status 1  [got $rc]"
+assert_log "snapshot logged"  "\[snapshot\] tmux="
+assert_log "popup rc logged"  "\[launcher\] popup rc=1"
+assert_log "popup stderr logged" "mock popup error"
+echo ""
+
+# ── T9: launcher_full_cmd records cmd exit code and stderr ───────────────────
+echo "T9: launcher_full_cmd — failing cmd logs rc and stderr"
+clear_log
+(
+    SHELL=/bin/bash
+    source "$SCRIPTS/utils.sh"
+    bash -c "$(launcher_full_cmd 'echo cmd_stderr_marker >&2; exit 3')" </dev/null >/dev/null 2>&1
+)
+assert_log "cmd rc logged"     "\[launcher/exit\] rc=3"
+assert_log "cmd stderr logged" "cmd_stderr_marker"
 echo ""
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────

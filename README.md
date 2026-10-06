@@ -133,5 +133,23 @@ All popup events are then logged to `/tmp/floatx_debug.log`. Monitor in real tim
 tail -f /tmp/floatx_debug.log
 ```
 
+### Diagnosing a failing launcher
+
+If a launcher key fails (e.g. `'.../launch.sh 1' returned 1`), turn debug on at
+runtime — no reload, so the broken state is preserved — and press the key again:
+
+```bash
+tmux setenv -g FLOATX_DEBUG on
+# press the launcher key
+cat /tmp/floatx_debug.log
+tmux setenv -g FLOATX_DEBUG off
+```
+
+In debug mode each launch logs a `[snapshot]` (tmux version, target pane,
+clients, launcher env, how `$SHELL -ic` resolves the command), the popup's exit
+code and stderr (`[launcher] popup rc=`), and the command's own exit code and
+stderr (`[launcher/exit] rc=`). If the command fails, the popup stays open until you press Enter.
+A `[launch] FAIL cmd empty` line means the launcher env var was lost.
+
 ### Acknowledgments
 This project is inspired by [omerxx/tmux-floax](https://github.com/omerxx/tmux-floax), and is mainly developed by `claude code`

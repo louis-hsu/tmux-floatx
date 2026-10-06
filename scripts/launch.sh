@@ -5,7 +5,10 @@ source "$CURRENT_DIR/utils.sh"
 
 index="$1"
 cmd="$(env_val "FLOATX_LAUNCH_${index}_CMD")"
-[ -z "$cmd" ] && exit 1
+if [ -z "$cmd" ]; then
+    floatx_log "[launch] FAIL cmd empty | index=$index launcher env: $(tmux showenv -g 2>/dev/null | grep '^FLOATX_LAUNCH' | tr '\n' ' ')"
+    exit 1
+fi
 
 session="$(env_val FLOATX_SESSION)"
 [ -z "$session" ] && session="$DEFAULT_SESSION"
@@ -20,12 +23,15 @@ if [ "$current_session" = "$session" ]; then
     # - Dismiss float first, reopen it after launcher exits
     pane="$(env_val FLOATX_PANE)"
     floatx_log "[launch] inside-float | index=$index cmd=[$cmd] pane=$pane cwd=$cwd"
+    floatx_launch_snapshot "$cmd" "$cwd" "$pane"
     unset_move_bindings
     tmux detach-client
+    floatx_log "[launch] detach-client rc=$?"
     open_launcher_popup "$cmd" "$cwd" "$pane" "$CURRENT_DIR/float_reopen.sh"
 else
     # Called from outside the float session — use current pane as target
     pane="$(tmux display-message -p '#{pane_id}')"
     floatx_log "[launch] outside-float | index=$index cmd=[$cmd] pane=$pane cwd=$cwd"
+    floatx_launch_snapshot "$cmd" "$cwd" "$pane"
     open_launcher_popup "$cmd" "$cwd" "$pane"
 fi
