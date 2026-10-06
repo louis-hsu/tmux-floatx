@@ -54,7 +54,8 @@ run_dock() {
             case "$*" in
                 "display-message -p #{session_name}") echo "$MOCK_SESSION" ;;
                 "display-message -p #{pane_id}")      echo "$MOCK_FP" ;;
-                detach-client)  floatx_log "[test] mock: detach-client called" ;;
+                "display-message -p #{client_name}")  echo "/dev/mock-popup-client" ;;
+                detach-client*) floatx_log "[test] mock: $*" ;;
                 display-message*) floatx_log "[test] mock: display-message $*" ;;
                 *)              command tmux "$@" ;;
             esac
@@ -107,8 +108,8 @@ assert_eq  "origin gained a window"     "$((before+1))" "$after"
 assert_eq  "pane now lives in origin"   "$ORIGIN_SESSION" "$(tmux display-message -p -t "$fp" '#{session_name}')"
 assert_eq  "new window is current"      "$fp" "$(tmux display-message -p -t "$ORIGIN_SESSION" '#{pane_id}')"
 assert_eq  "float keeps other pane"     "1" "$(tmux list-panes -t "$FLOAT_SESSION" | wc -l | tr -d ' ')"
-assert_log "dock logged"                "\[dock\] fp=$fp origin="
-assert_log "popup detached"             "\[test\] mock: detach-client called"
+assert_log "dock logged"                "\[dock\] fp=$fp client=.* origin="
+assert_log "popup client detached"      "\[test\] mock: detach-client -t /dev/mock-popup-client"
 echo ""
 
 # ── T2: docking the last pane removes the float session ──────────────────────
@@ -117,6 +118,8 @@ setup; clear_log
 fp="$(tmux display-message -p -t "$FLOAT_SESSION" '#{pane_id}')"
 run_dock "$fp"
 assert_eq  "pane now lives in origin"   "$ORIGIN_SESSION" "$(tmux display-message -p -t "$fp" '#{session_name}')"
+assert_log "only popup client detached" "\[test\] mock: detach-client -t /dev/mock-popup-client"
+assert_not_log "no bare detach-client"  "mock: detach-client$"
 if tmux has-session -t "$FLOAT_SESSION" 2>/dev/null; then
     fail "float session destroyed"
 else
@@ -143,7 +146,7 @@ fp="$(tmux display-message -p -t "$FLOAT_SESSION" '#{pane_id}')"
 tmux kill-session -t "$ORIGIN_SESSION"
 run_dock "$fp"
 assert_log     "origin missing logged"  "\[dock\] origin missing"
-assert_not_log "no detach"              "\[test\] mock: detach-client called"
+assert_not_log "no detach"              "\[test\] mock: detach-client"
 assert_eq      "pane still in float"    "$FLOAT_SESSION" "$(tmux display-message -p -t "$fp" '#{session_name}')"
 echo ""
 
